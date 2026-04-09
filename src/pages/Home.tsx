@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, MapPin, Clock, Coffee, BookOpen, Quote, ChevronLeft, ChevronRight } from 'lucide-react';
-import { thisWeekPlan, testimonials } from '../data/mockData';
+import { thisWeekPlan } from '../data/mockData';
 
 const carouselImages = [
   "/images/0a3c1153-323a-4474-98d4-5df5483a7ad2.JPG",

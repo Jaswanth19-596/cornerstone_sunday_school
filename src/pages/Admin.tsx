@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Lock, Calendar, BookOpen, Plus, Pencil, Trash2,
+  Lock, Plus, Pencil, Trash2,
   X, LogOut, ArrowLeft, Save, RotateCcw,
 } from 'lucide-react';
 import { useEvents, useResources } from '../hooks/useData';
