@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Lock, Plus, Pencil, Trash2,
-  X, LogOut, ArrowLeft, Save, RotateCcw,
+  X, LogOut, ArrowLeft, Save, RotateCcw, Mail, Send, Calendar as CalendarIcon, List,
+  Users
 } from 'lucide-react';
-import { useEvents, useResources } from '../hooks/useData';
-import type { Event, Sermon } from '../types';
+import { useEvents, useResources, useEmails } from '../hooks/useData';
+import Calendar from '../components/events/Calendar';
+import type { Event, Sermon, Participant } from '../types';
 
 const ADMIN_PASSWORD = 'grace2024';
 
@@ -88,19 +90,138 @@ function ResourceForm({ initial, onSave, onCancel }: { initial: Omit<Sermon, 'id
   );
 }
 
+function InviteModal({ event, onInvite, onClose }: { event: Event; onInvite: (emails: string[]) => void; onClose: () => void }) {
+  const { emails } = useEmails();
+  const [selected, setSelected] = useState<Set<string>>(new Set(emails.map(e => e.email)));
+  
+  const toggle = (email: string) => {
+    const next = new Set(selected);
+    if (next.has(email)) next.delete(email);
+    else next.add(email);
+    setSelected(next);
+  };
+  
+  const handleGenerate = () => {
+    if (selected.size === 0) return alert('Select at least one email.');
+    
+    let startDate = new Date(event.date);
+    if (event.time) {
+      const match = event.time.match(/(\d+)(?::(\d+))?\s*(AM|PM)/i);
+      if (match) {
+        let hours = parseInt(match[1]);
+        const mins = parseInt(match[2] || '0');
+        const isPM = match[3].toUpperCase() === 'PM';
+        if (isPM && hours < 12) hours += 12;
+        if (!isPM && hours === 12) hours = 0;
+        startDate.setHours(hours, mins, 0);
+      }
+    }
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+    const formatGD = (d: Date) => d.toISOString().replace(/-|:|\.\d\d\d/g, ''); 
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: event.title,
+      details: event.description || '',
+      location: event.location || '',
+      dates: `${formatGD(startDate)}/${formatGD(endDate)}`,
+      add: Array.from(selected).join(',')
+    });
+
+    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
+    onInvite(Array.from(selected));
+    onClose();
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+      <div className="card" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', background: 'var(--color-surface)', position: 'relative' }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-ink-muted)' }}><X size={20} /></button>
+        <h2 className="heading-sm" style={{ marginBottom: '0.5rem' }}>Send Calendar Invite</h2>
+        <p className="body-text" style={{ marginBottom: '1.5rem', fontSize: '0.9375rem' }}>For: <strong style={{ color: 'var(--color-ink)' }}>{event.title}</strong></p>
+        
+        {emails.length === 0 ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-ink-muted)' }}>
+            No emails in directory. Add some in the Emails tab first!
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Select Recipients ({selected.size})</span>
+              <button onClick={() => setSelected(new Set(selected.size === emails.length ? [] : emails.map(e => e.email)))} className="btn-ghost" style={{ fontSize: '0.8125rem' }}>
+                {selected.size === emails.length ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '250px', overflowY: 'auto', marginBottom: '1.5rem' }}>
+              {emails.map(e => (
+                <label key={e.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.5rem' }}>
+                  <input type="checkbox" checked={selected.has(e.email)} onChange={() => toggle(e.email)} style={{ width: '1.125rem', height: '1.125rem', accentColor: 'var(--color-brand-600)' }} />
+                  <span style={{ color: 'var(--color-ink)' }}>{e.email}</span>
+                </label>
+              ))}
+            </div>
+            <button onClick={handleGenerate} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+              <Send size={16} /> Generate Invite Link
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ParticipantsModal({ event, onClose }: { event: Event; onClose: () => void }) {
+  const participants = event.participants || [];
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+      <div className="card" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', background: 'var(--color-surface)', position: 'relative' }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-ink-muted)' }}><X size={20} /></button>
+        <h2 className="heading-sm" style={{ marginBottom: '0.5rem' }}>Invited Guests</h2>
+        <p className="body-text" style={{ marginBottom: '1.5rem', fontSize: '0.9375rem' }}>For: <strong style={{ color: 'var(--color-ink)' }}>{event.title}</strong></p>
+
+        {participants.length === 0 ? (
+          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-ink-muted)' }}>
+            <Users size={32} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+            <p>No one has been invited yet.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {participants.map(p => (
+              <div key={p.email} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'white', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--color-brand-50)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Mail size={14} color="var(--color-brand-600)" />
+                </div>
+                <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--color-ink)' }}>{p.email}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Admin() {
   const [authed, setAuthed]   = useState(false);
   const [pw, setPw]           = useState('');
   const [pwError, setPwError] = useState(false);
-  const [tab, setTab]         = useState<'events' | 'resources'>('events');
+  const [tab, setTab]         = useState<'events' | 'resources' | 'emails'>('events');
 
   const { events, addEvent, updateEvent, deleteEvent, resetEvents } = useEvents();
   const [editingEventId, setEditingEventId]   = useState<string | null>(null);
   const [addingEvent, setAddingEvent]         = useState(false);
+  const [invitingEvent, setInvitingEvent]     = useState<Event | null>(null);
+  const [managingEvent, setManagingEvent]     = useState<Event | null>(null);
+  const [eventView, setEventView]             = useState<'list' | 'calendar'>('calendar');
+  const [prefilledDate, setPrefilledDate]     = useState('');
 
   const { resources, addResource, updateResource, deleteResource, resetResources } = useResources();
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
   const [addingResource, setAddingResource]       = useState(false);
+
+  const { emails, addEmail, deleteEmail } = useEmails();
+  const [newEmail, setNewEmail] = useState('');
 
   if (!authed) {
     return (
@@ -154,14 +275,14 @@ export default function Admin() {
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '3rem 1.5rem' }}>
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-          {(['events', 'resources'] as const).map((t) => (
+          {(['events', 'resources', 'emails'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '0.75rem 1.5rem', borderRadius: '100px', fontSize: '0.9375rem', fontWeight: 700,
               border: tab === t ? '2px solid var(--color-brand-600)' : '2px solid var(--color-border)',
               background: tab === t ? 'var(--color-brand-600)' : 'white',
               color: tab === t ? 'white' : 'var(--color-ink-muted)', cursor: 'pointer', transition: 'all 0.2s', textTransform: 'capitalize'
             }}>
-              {t === 'events' ? '📅 Events' : '📖 Resources'}
+              {t === 'events' ? '📅 Events' : t === 'resources' ? '📖 Resources' : '✉️ Emails'}
             </button>
           ))}
         </div>
@@ -176,28 +297,100 @@ export default function Admin() {
               </div>
             </div>
 
-            {addingEvent && <EventForm initial={emptyEvent} onSave={(e) => { addEvent(e); setAddingEvent(false); }} onCancel={() => setAddingEvent(false)} />}
+            {addingEvent && (
+              <EventForm 
+                initial={{ ...emptyEvent, date: prefilledDate || emptyEvent.date }} 
+                onSave={(e) => { addEvent(e); setAddingEvent(false); setPrefilledDate(''); }} 
+                onCancel={() => { setAddingEvent(false); setPrefilledDate(''); }} 
+              />
+            )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {sortedEvents.map((event) => (
-                <div key={event.id}>
-                  {editingEventId === event.id ? (
-                    <EventForm initial={event} onSave={(updates) => { updateEvent(event.id, updates); setEditingEventId(null); }} onCancel={() => setEditingEventId(null)} />
-                  ) : (
-                    <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap', padding: '1.5rem' }}>
-                      <div style={{ flex: 1, minWidth: '140px' }}>
-                        <div style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--color-ink)' }}>{event.title}</div>
-                        <div className="caption" style={{ marginTop: '0.25rem' }}>{event.date} · {event.time}</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.75rem', flexShrink: 0 }}>
-                        <button onClick={() => { setEditingEventId(event.id); setAddingEvent(false); }} className="btn-outline" style={{ padding: '0.5rem 1rem' }}><Pencil size={14} /> Edit</button>
-                        <button onClick={() => { if (confirm('Delete?')) deleteEvent(event.id); }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#FEE2E2', color: '#DC2626', border: 'none', borderRadius: '100px', fontWeight: 700, cursor: 'pointer' }}><Trash2 size={14} /> Delete</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', background: 'white', borderRadius: '100px', padding: '0.25rem', border: '1px solid var(--color-border)' }}>
+                <button 
+                  onClick={() => setEventView('list')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 1rem', borderRadius: '100px',
+                    background: eventView === 'list' ? 'var(--color-brand-600)' : 'transparent',
+                    color: eventView === 'list' ? 'white' : 'var(--color-ink-muted)',
+                    border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700,
+                  }}
+                >
+                  <List size={14} /> List
+                </button>
+                <button 
+                  onClick={() => setEventView('calendar')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 1rem', borderRadius: '100px',
+                    background: eventView === 'calendar' ? 'var(--color-brand-600)' : 'transparent',
+                    color: eventView === 'calendar' ? 'white' : 'var(--color-ink-muted)',
+                    border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700,
+                  }}
+                >
+                  <CalendarIcon size={14} /> Calendar
+                </button>
+              </div>
             </div>
+
+            {eventView === 'calendar' ? (
+              <Calendar events={events} />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {sortedEvents.map((event) => (
+                  <div key={event.id}>
+                    {editingEventId === event.id ? (
+                      <EventForm initial={event} onSave={(updates) => { updateEvent(event.id, updates); setEditingEventId(null); }} onCancel={() => setEditingEventId(null)} />
+                    ) : (
+                      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap', padding: '1.5rem' }}>
+                        <div style={{ flex: 1, minWidth: '140px' }}>
+                          <div style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--color-ink)' }}>{event.title}</div>
+                          <div className="caption" style={{ marginTop: '0.25rem' }}>{event.date} · {event.time}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.75rem', flexShrink: 0, flexWrap: 'wrap' }}>
+                          <button onClick={() => setManagingEvent(event)} className="btn-ghost" style={{ padding: '0.5rem 1rem', border: '1px solid var(--color-border)', borderRadius: '100px' }}>
+                            <Users size={14} /> {event.participants?.length || 0}
+                          </button>
+                          <button onClick={() => setInvitingEvent(event)} className="btn-accent" style={{ padding: '0.5rem 1rem' }}><Send size={14} /> Send Invite</button>
+                          <button onClick={() => { setEditingEventId(event.id); setAddingEvent(false); }} className="btn-outline" style={{ padding: '0.5rem 1rem' }}><Pencil size={14} /> Edit</button>
+                          <button onClick={() => { if (confirm('Delete?')) deleteEvent(event.id); }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#FEE2E2', color: '#DC2626', border: 'none', borderRadius: '100px', fontWeight: 700, cursor: 'pointer' }}><Trash2 size={14} /> Delete</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {invitingEvent && (
+              <InviteModal 
+                event={invitingEvent} 
+                onInvite={(selectedEmails) => {
+                  const existing = invitingEvent.participants || [];
+                  const nextParticipants: Participant[] = [...existing];
+                  
+                  selectedEmails.forEach(email => {
+                    if (!existing.some(p => p.email === email)) {
+                      nextParticipants.push({
+                        email,
+                        status: 'invited',
+                        invitedAt: new Date().toISOString()
+                      });
+                    }
+                  });
+                  
+                  updateEvent(invitingEvent.id, { participants: nextParticipants });
+                }}
+                onClose={() => setInvitingEvent(null)} 
+              />
+            )}
+
+            {managingEvent && (
+              <ParticipantsModal 
+                event={managingEvent} 
+                onClose={() => setManagingEvent(null)} 
+              />
+            )}
           </div>
         )}
 
@@ -232,6 +425,84 @@ export default function Admin() {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {tab === 'emails' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 className="heading-md">Email Directory</h2>
+            </div>
+            <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+              <h3 className="heading-sm" style={{ marginBottom: '1rem' }}>Add New Email</h3>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <input
+                  type="email"
+                  className="input"
+                  placeholder="e.g. member@gracechurch.org"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newEmail.includes('@')) {
+                      addEmail(newEmail);
+                      setNewEmail('');
+                    }
+                  }}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={() => {
+                    if (newEmail.includes('@')) {
+                      addEmail(newEmail);
+                      setNewEmail('');
+                    }
+                  }}
+                  className="btn-primary"
+                  style={{ padding: '0 1.5rem', whiteSpace: 'nowrap' }}
+                >
+                  <Plus size={16} /> Add Email
+                </button>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+              {emails.length === 0 ? (
+                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-ink-muted)' }}>
+                  <Mail size={32} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+                  <p>No emails added yet. Add your first member above!</p>
+                </div>
+              ) : (
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                  {emails.map((m, i) => (
+                    <li key={m.id} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '1rem 1.5rem',
+                      borderBottom: i < emails.length - 1 ? '1px solid var(--color-border)' : 'none'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{
+                          width: '32px', height: '32px', borderRadius: '50%', background: 'var(--color-brand-50)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          <Mail size={14} color="var(--color-brand-600)" />
+                        </div>
+                        <span style={{ fontWeight: 500, color: 'var(--color-ink)' }}>{m.email}</span>
+                      </div>
+                      <button
+                        onClick={() => { if (confirm('Remove ' + m.email + '?')) deleteEmail(m.id); }}
+                        style={{
+                          background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer',
+                          padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                        title="Remove email"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         )}

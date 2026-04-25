@@ -66,6 +66,11 @@ export interface WeeklyPlan {
   endTime: string;
 }
 
+export interface Participant {
+  email: string;
+  invitedAt: string;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -76,6 +81,7 @@ export interface Event {
   type: 'sunday-gathering' | 'social' | 'service' | 'special';
   image?: string;
   rsvpLink?: string;
+  participants?: Participant[];
 }
 
 export interface Testimonial {

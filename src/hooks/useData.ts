@@ -1,9 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { events as defaultEvents, pastSermons as defaultResources } from '../data/mockData';
 import type { Event, Sermon } from '../types';
 
 const EVENTS_KEY = 'ss_events';
 const RESOURCES_KEY = 'ss_resources';
+const EMAILS_KEY = 'ss_emails';
+
+export interface EmailMember {
+  id: string;
+  email: string;
+}
 
 function loadFromStorage<T>(key: string, fallback: T[]): T[] {
   try {
@@ -99,4 +105,27 @@ export function useResources() {
   }, []);
 
   return { resources, addResource, updateResource, deleteResource, resetResources };
+}
+
+// ─── Emails ───────────────────────────────────────────────
+export function useEmails() {
+  const [emails, setEmails] = useState<EmailMember[]>(() => {
+    const saved = localStorage.getItem(EMAILS_KEY);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem(EMAILS_KEY, JSON.stringify(emails));
+  }, [emails]);
+
+  const addEmail = (emailStr: string) => {
+    const newEmail: EmailMember = { id: Date.now().toString(), email: emailStr };
+    setEmails((prev) => [...prev, newEmail]);
+  };
+
+  const deleteEmail = (id: string) => {
+    setEmails((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  return { emails, addEmail, deleteEmail };
 }

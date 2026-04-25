@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Calendar, MapPin, Clock, ArrowRight } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, Clock, ArrowRight, List } from 'lucide-react';
 import { useEvents } from '../hooks/useData';
 import { Link } from 'react-router-dom';
+import Calendar from '../components/events/Calendar';
 
 const TYPE_LABELS: Record<string, string> = {
   'sunday-gathering': 'Sunday Gathering',
@@ -28,6 +29,7 @@ const filters = [
 export default function Events() {
   const { events } = useEvents();
   const [selected, setSelected] = useState('all');
+  const [view, setView] = useState<'list' | 'calendar'>('list');
 
   const filtered = events
     .filter((e) => selected === 'all' || e.type === selected)
@@ -51,36 +53,67 @@ export default function Events() {
 
       <section style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
         <div className="page-container">
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', padding: '1.5rem 0' }}>
-            {filters.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setSelected(f.value)}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', padding: '1.5rem 0' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {filters.map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => setSelected(f.value)}
+                  style={{
+                    padding: '0.5rem 1.25rem',
+                    borderRadius: '100px',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '0.875rem',
+                    fontWeight: selected === f.value ? 700 : 600,
+                    border: selected === f.value ? '2px solid var(--color-brand-600)' : '2px solid transparent',
+                    background: selected === f.value ? 'var(--color-brand-600)' : 'var(--color-surface-2)',
+                    color: selected === f.value ? 'white' : 'var(--color-ink-muted)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', background: 'var(--color-surface-2)', borderRadius: '100px', padding: '0.25rem' }}>
+              <button 
+                onClick={() => setView('list')}
                 style={{
-                  padding: '0.5rem 1.25rem',
-                  borderRadius: '100px',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '0.875rem',
-                  fontWeight: selected === f.value ? 700 : 600,
-                  border: selected === f.value ? '2px solid var(--color-brand-600)' : '2px solid transparent',
-                  background: selected === f.value ? 'var(--color-brand-600)' : 'var(--color-surface-2)',
-                  color: selected === f.value ? 'white' : 'var(--color-ink-muted)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '100px',
+                  background: view === 'list' ? 'var(--color-white)' : 'transparent',
+                  color: view === 'list' ? 'var(--color-brand-600)' : 'var(--color-ink-muted)',
+                  border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700,
+                  boxShadow: view === 'list' ? 'var(--shadow-sm)' : 'none'
                 }}
               >
-                {f.label}
+                <List size={16} /> List
               </button>
-            ))}
+              <button 
+                onClick={() => setView('calendar')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '100px',
+                  background: view === 'calendar' ? 'var(--color-white)' : 'transparent',
+                  color: view === 'calendar' ? 'var(--color-brand-600)' : 'var(--color-ink-muted)',
+                  border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700,
+                  boxShadow: view === 'calendar' ? 'var(--shadow-sm)' : 'none'
+                }}
+              >
+                <CalendarIcon size={16} /> Calendar
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
       <section className="section bg-surface">
         <div className="page-container">
-          {filtered.length === 0 ? (
+          {view === 'calendar' ? (
+            <Calendar events={filtered} />
+          ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '5rem 0', color: 'var(--color-ink-faint)' }}>
-              <Calendar size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+              <CalendarIcon size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
               <p style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-ink-muted)' }}>No events found</p>
             </div>
           ) : (
