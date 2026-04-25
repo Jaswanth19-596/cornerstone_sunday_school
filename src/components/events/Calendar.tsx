@@ -82,8 +82,18 @@ export default function Calendar({
         </div>
       </div>
 
-      {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--color-border)', border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden' }}>
+      {/* Grid Container */}
+      <div style={{ overflowX: 'auto', margin: '0 -0.5rem', padding: '0 0.5rem' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(7, 1fr)', 
+          gap: '1px', 
+          background: 'var(--color-border)', 
+          border: '1px solid var(--color-border)', 
+          borderRadius: '12px', 
+          overflow: 'hidden',
+          minWidth: '600px' // Ensure days don't get too squeezed
+        }}>
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
           <div key={d} style={{ padding: '0.75rem', textAlign: 'center', background: 'var(--color-surface-2)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-ink-muted)', letterSpacing: '0.05em' }}>
             {d}
@@ -156,6 +166,7 @@ export default function Calendar({
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* Legend */}

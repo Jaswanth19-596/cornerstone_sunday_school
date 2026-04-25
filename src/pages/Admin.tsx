@@ -274,7 +274,7 @@ export default function Admin() {
       </div>
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '3rem 1.5rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
           {(['events', 'resources', 'emails'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '0.75rem 1.5rem', borderRadius: '100px', fontSize: '0.9375rem', fontWeight: 700,
@@ -282,7 +282,7 @@ export default function Admin() {
               background: tab === t ? 'var(--color-brand-600)' : 'white',
               color: tab === t ? 'white' : 'var(--color-ink-muted)', cursor: 'pointer', transition: 'all 0.2s', textTransform: 'capitalize'
             }}>
-              {t === 'events' ? '📅 Events' : t === 'resources' ? '📖 Resources' : '✉️ Emails'}
+              {t === 'events' ? 'Events' : t === 'resources' ? 'Resources' : 'Emails'}
             </button>
           ))}
         </div>
