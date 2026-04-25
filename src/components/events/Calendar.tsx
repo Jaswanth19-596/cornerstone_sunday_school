@@ -150,14 +150,13 @@ export default function Calendar({
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
                       display: 'flex',
                       flexDirection: 'column',
                       cursor: 'default'
                     }}
-                    title={`${event.title} - ${event.time}`}
+                    title={`${event.title} - ${event.time}${event.endTime ? ` - ${event.endTime}` : ''}`}
                   >
-                    <span>{event.time}</span>
+                    <span>{event.time}{event.endTime ? ` - ${event.endTime}` : ''}</span>
                     <span style={{ fontWeight: 800 }}>{event.title}</span>
                     
                   </div>

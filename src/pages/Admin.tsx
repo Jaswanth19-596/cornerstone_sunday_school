@@ -20,8 +20,29 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+const to24h = (time12h: string) => {
+  if (!time12h) return '';
+  const match = time12h.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return time12h;
+  let [_, h, m, p] = match;
+  let hours = parseInt(h);
+  if (p.toUpperCase() === 'PM' && hours < 12) hours += 12;
+  if (p.toUpperCase() === 'AM' && hours === 12) hours = 0;
+  return `${hours.toString().padStart(2, '0')}:${m}`;
+};
+
+const to12h = (time24h: string) => {
+  if (!time24h) return '';
+  const [h, m] = time24h.split(':');
+  let hours = parseInt(h);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  return `${hours}:${m} ${ampm}`;
+};
+
 const emptyEvent: Omit<Event, 'id'> = {
-  title: '', date: '', time: '', location: '', description: '', type: 'sunday-gathering',
+  title: '', date: '', time: '', endTime: '', location: '', description: '', type: 'sunday-gathering',
 };
 
 function EventForm({ initial, onSave, onCancel }: { initial: Omit<Event, 'id'>; onSave: (e: Omit<Event, 'id'>) => void; onCancel: () => void; }) {
@@ -29,11 +50,12 @@ function EventForm({ initial, onSave, onCancel }: { initial: Omit<Event, 'id'>; 
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
-    <div className="card" style={{ marginBottom: '1.5rem', border: '2px solid var(--color-forest-500)', boxShadow: 'var(--shadow-md)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0 1.5rem' }}>
+    <div className="card" style={{ marginBottom: '2rem', border: '2px solid var(--color-brand-600)', boxShadow: 'var(--shadow-md)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0 1rem' }}>
         <Field label="Title"><input className="input" value={form.title} onChange={(e) => set('title')(e.target.value)} /></Field>
         <Field label="Date"><input className="input" type="date" value={form.date} onChange={(e) => set('date')(e.target.value)} /></Field>
-        <Field label="Time"><input className="input" value={form.time} onChange={(e) => set('time')(e.target.value)} /></Field>
+        <Field label="Start Time"><input className="input" type="time" value={to24h(form.time)} onChange={(e) => set('time')(to12h(e.target.value))} /></Field>
+        <Field label="End Time"><input className="input" type="time" value={to24h(form.endTime || '')} onChange={(e) => set('endTime')(to12h(e.target.value))} /></Field>
         <Field label="Location"><input className="input" value={form.location} onChange={(e) => set('location')(e.target.value)} /></Field>
         <Field label="Type">
           <select className="input" value={form.type} onChange={(e) => set('type')(e.target.value as Event['type'])}>
@@ -66,7 +88,7 @@ function ResourceForm({ initial, onSave, onCancel }: { initial: Omit<Sermon, 'id
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
-    <div className="card" style={{ marginBottom: '1.5rem', border: '2px solid var(--color-forest-500)', boxShadow: 'var(--shadow-md)' }}>
+    <div className="card" style={{ marginBottom: '1.5rem', border: '2px solid var(--color-brand-600)', boxShadow: 'var(--shadow-md)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0 1.5rem' }}>
         <Field label="Title"><input className="input" value={form.title} onChange={(e) => set('title')(e.target.value)} /></Field>
         <Field label="Speaker"><input className="input" value={form.speaker} onChange={(e) => set('speaker')(e.target.value)} /></Field>
@@ -213,8 +235,6 @@ export default function Admin() {
   const [addingEvent, setAddingEvent]         = useState(false);
   const [invitingEvent, setInvitingEvent]     = useState<Event | null>(null);
   const [managingEvent, setManagingEvent]     = useState<Event | null>(null);
-  const [eventView, setEventView]             = useState<'list' | 'calendar'>('calendar');
-  const [prefilledDate, setPrefilledDate]     = useState('');
 
   const { resources, addResource, updateResource, deleteResource, resetResources } = useResources();
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
@@ -273,14 +293,14 @@ export default function Admin() {
         </div>
       </div>
 
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '3rem 1.5rem' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '3rem 1.5rem' }}>
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
           {(['events', 'resources', 'emails'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '0.75rem 1.5rem', borderRadius: '100px', fontSize: '0.9375rem', fontWeight: 700,
               border: tab === t ? '2px solid var(--color-brand-600)' : '2px solid var(--color-border)',
               background: tab === t ? 'var(--color-brand-600)' : 'white',
-              color: tab === t ? 'white' : 'var(--color-ink-muted)', cursor: 'pointer', transition: 'all 0.2s', textTransform: 'capitalize'
+              color: tab === t ? 'white' : 'var(--color-ink-muted)', cursor: 'pointer', transition: 'all 0.2s'
             }}>
               {t === 'events' ? 'Events' : t === 'resources' ? 'Resources' : 'Emails'}
             </button>
@@ -290,77 +310,72 @@ export default function Admin() {
         {tab === 'events' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 className="heading-md">Events</h2>
+              <h2 className="heading-md">Events Management</h2>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button onClick={() => { if (confirm('Reset to defaults?')) resetEvents(); }} className="btn-outline" style={{ padding: '0.5rem 1rem' }}><RotateCcw size={16} /> Reset</button>
                 <button onClick={() => { setAddingEvent(true); setEditingEventId(null); }} className="btn-primary" style={{ padding: '0.5rem 1.25rem' }}><Plus size={16} /> Add Event</button>
               </div>
             </div>
 
-            {addingEvent && (
-              <EventForm 
-                initial={{ ...emptyEvent, date: prefilledDate || emptyEvent.date }} 
-                onSave={(e) => { addEvent(e); setAddingEvent(false); setPrefilledDate(''); }} 
-                onCancel={() => { setAddingEvent(false); setPrefilledDate(''); }} 
-              />
-            )}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: '2.5rem',
+              alignItems: 'start'
+            }}>
+              {/* Left Column: Management List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <h3 className="heading-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <List size={20} className="text-brand-600" /> Event List
+                </h3>
 
+                {addingEvent && (
+                  <EventForm 
+                    initial={emptyEvent} 
+                    onSave={(e) => { addEvent(e); setAddingEvent(false); }} 
+                    onCancel={() => setAddingEvent(false)} 
+                  />
+                )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', background: 'white', borderRadius: '100px', padding: '0.25rem', border: '1px solid var(--color-border)' }}>
-                <button 
-                  onClick={() => setEventView('list')}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 1rem', borderRadius: '100px',
-                    background: eventView === 'list' ? 'var(--color-brand-600)' : 'transparent',
-                    color: eventView === 'list' ? 'white' : 'var(--color-ink-muted)',
-                    border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700,
-                  }}
-                >
-                  <List size={14} /> List
-                </button>
-                <button 
-                  onClick={() => setEventView('calendar')}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 1rem', borderRadius: '100px',
-                    background: eventView === 'calendar' ? 'var(--color-brand-600)' : 'transparent',
-                    color: eventView === 'calendar' ? 'white' : 'var(--color-ink-muted)',
-                    border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700,
-                  }}
-                >
-                  <CalendarIcon size={14} /> Calendar
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {sortedEvents.map((event) => (
+                    <div key={event.id}>
+                      {editingEventId === event.id ? (
+                        <EventForm initial={event} onSave={(updates) => { updateEvent(event.id, updates); setEditingEventId(null); }} onCancel={() => setEditingEventId(null)} />
+                      ) : (
+                        <div className="card" style={{ padding: '1.5rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1rem' }}>
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: '1.125rem', color: 'var(--color-ink)' }}>{event.title}</div>
+                              <div className="caption" style={{ marginTop: '0.25rem', fontWeight: 600 }}>{event.date} · {event.time}{event.endTime ? ` - ${event.endTime}` : ''}</div>
+                            </div>
+                            <button onClick={() => setManagingEvent(event)} className="btn-ghost" style={{ padding: '0.4rem 0.8rem', border: '1px solid var(--color-border)', borderRadius: '100px', fontSize: '0.75rem' }}>
+                              <Users size={14} /> {event.participants?.length || 0}
+                            </button>
+                          </div>
+                          
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <button onClick={() => setInvitingEvent(event)} className="btn-accent" style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}><Send size={14} /> Invite</button>
+                            <button onClick={() => { setEditingEventId(event.id); setAddingEvent(false); }} className="btn-outline" style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}><Pencil size={14} /> Edit</button>
+                            <button onClick={() => { if (confirm('Delete?')) deleteEvent(event.id); }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: '#FEE2E2', color: '#DC2626', border: 'none', borderRadius: '100px', fontWeight: 700, cursor: 'pointer', fontSize: '0.8125rem' }}><Trash2 size={14} /> Delete</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right Column: Visual Calendar */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <h3 className="heading-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <CalendarIcon size={20} className="text-brand-600" /> Visual Preview
+                </h3>
+                <div style={{ position: 'sticky', top: '2rem' }}>
+                  <Calendar events={events} />
+                </div>
               </div>
             </div>
-
-            {eventView === 'calendar' ? (
-              <Calendar events={events} />
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {sortedEvents.map((event) => (
-                  <div key={event.id}>
-                    {editingEventId === event.id ? (
-                      <EventForm initial={event} onSave={(updates) => { updateEvent(event.id, updates); setEditingEventId(null); }} onCancel={() => setEditingEventId(null)} />
-                    ) : (
-                      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap', padding: '1.5rem' }}>
-                        <div style={{ flex: 1, minWidth: '140px' }}>
-                          <div style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--color-ink)' }}>{event.title}</div>
-                          <div className="caption" style={{ marginTop: '0.25rem' }}>{event.date} · {event.time}</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.75rem', flexShrink: 0, flexWrap: 'wrap' }}>
-                          <button onClick={() => setManagingEvent(event)} className="btn-ghost" style={{ padding: '0.5rem 1rem', border: '1px solid var(--color-border)', borderRadius: '100px' }}>
-                            <Users size={14} /> {event.participants?.length || 0}
-                          </button>
-                          <button onClick={() => setInvitingEvent(event)} className="btn-accent" style={{ padding: '0.5rem 1rem' }}><Send size={14} /> Send Invite</button>
-                          <button onClick={() => { setEditingEventId(event.id); setAddingEvent(false); }} className="btn-outline" style={{ padding: '0.5rem 1rem' }}><Pencil size={14} /> Edit</button>
-                          <button onClick={() => { if (confirm('Delete?')) deleteEvent(event.id); }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#FEE2E2', color: '#DC2626', border: 'none', borderRadius: '100px', fontWeight: 700, cursor: 'pointer' }}><Trash2 size={14} /> Delete</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
 
             {invitingEvent && (
               <InviteModal 
@@ -368,17 +383,11 @@ export default function Admin() {
                 onInvite={(selectedEmails) => {
                   const existing = invitingEvent.participants || [];
                   const nextParticipants: Participant[] = [...existing];
-                  
                   selectedEmails.forEach(email => {
                     if (!existing.some(p => p.email === email)) {
-                      nextParticipants.push({
-                        email,
-                        status: 'invited',
-                        invitedAt: new Date().toISOString()
-                      });
+                      nextParticipants.push({ email, invitedAt: new Date().toISOString() });
                     }
                   });
-                  
                   updateEvent(invitingEvent.id, { participants: nextParticipants });
                 }}
                 onClose={() => setInvitingEvent(null)} 

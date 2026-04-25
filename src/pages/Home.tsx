@@ -80,7 +80,7 @@ export default function Home() {
               <span style={{ color: 'var(--color-brand-200)' }}>First Baptist Church</span>.
             </h1>
             <p className="body-large anim-3" style={{ color: 'rgba(255,255,255,0.85)', maxWidth: '600px', marginBottom: '2.5rem', fontSize: '1.125rem' }}>
-              Breakfast, worship, and Bible study every Sunday morning with Aneesh Ankem — before joining the main service. All are welcome, exactly as you are.
+              Worship, Bible study, Breakfast and fellowship  every Sunday morning with Aneesh Ankem — before joining the main service. All are welcome. 
             </p>
             <div className="anim-4" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
               <Link to="/new" className="btn-accent" style={{ padding: '1rem 2rem', fontSize: '1.0625rem' }}>

@@ -76,6 +76,7 @@ export interface Event {
   title: string;
   date: string;
   time: string;
+  endTime?: string;
   location: string;
   description: string;
   type: 'sunday-gathering' | 'social' | 'service' | 'special';

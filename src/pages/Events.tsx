@@ -18,25 +18,13 @@ const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   special:  { bg: 'rgba(213,62,101,0.1)', text: 'var(--color-accent-rose)' },
 };
 
-const filters = [
-  { value: 'all',              label: 'All' },
-  { value: 'sunday-gathering', label: 'Sunday' },
-  { value: 'social',           label: 'Social' },
-  { value: 'service',          label: 'Service' },
-  { value: 'special',          label: 'Special' },
-];
-
 export default function Events() {
   const { events } = useEvents();
-  const [selected, setSelected] = useState('all');
-  const [view, setView] = useState<'list' | 'calendar'>('list');
-
-  const filtered = events
-    .filter((e) => selected === 'all' || e.type === selected)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const sortedEvents = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   return (
-    <>
+    <div style={{ minHeight: '100vh', background: 'var(--color-surface-2)' }}>
+      {/* Hero Section */}
       <section className="hero-bg" style={{ padding: '6rem 0 5rem' }}>
         <div className="page-container" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
           <span className="eyebrow anim-1" style={{ display: 'inline-block', marginBottom: '1.25rem', color: 'var(--color-brand-200)', borderBottom: '2px solid var(--color-accent-blue)', paddingBottom: '0.25rem' }}>
@@ -51,128 +39,99 @@ export default function Events() {
         </div>
       </section>
 
-      <section style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
-        <div className="page-container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', padding: '1.5rem 0' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {filters.map((f) => (
-                <button
-                  key={f.value}
-                  onClick={() => setSelected(f.value)}
-                  style={{
-                    padding: '0.5rem 1.25rem',
-                    borderRadius: '100px',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.875rem',
-                    fontWeight: selected === f.value ? 700 : 600,
-                    border: selected === f.value ? '2px solid var(--color-brand-600)' : '2px solid transparent',
-                    background: selected === f.value ? 'var(--color-brand-600)' : 'var(--color-surface-2)',
-                    color: selected === f.value ? 'white' : 'var(--color-ink-muted)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', background: 'var(--color-surface-2)', borderRadius: '100px', padding: '0.25rem' }}>
-              <button 
-                onClick={() => setView('list')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '100px',
-                  background: view === 'list' ? 'var(--color-white)' : 'transparent',
-                  color: view === 'list' ? 'var(--color-brand-600)' : 'var(--color-ink-muted)',
-                  border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700,
-                  boxShadow: view === 'list' ? 'var(--shadow-sm)' : 'none'
-                }}
-              >
-                <List size={16} /> List
-              </button>
-              <button 
-                onClick={() => setView('calendar')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '100px',
-                  background: view === 'calendar' ? 'var(--color-white)' : 'transparent',
-                  color: view === 'calendar' ? 'var(--color-brand-600)' : 'var(--color-ink-muted)',
-                  border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700,
-                  boxShadow: view === 'calendar' ? 'var(--shadow-sm)' : 'none'
-                }}
-              >
-                <CalendarIcon size={16} /> Calendar
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section bg-surface">
-        <div className="page-container">
-          {view === 'calendar' ? (
-            <Calendar events={filtered} />
-          ) : filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '5rem 0', color: 'var(--color-ink-faint)' }}>
-              <CalendarIcon size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-              <p style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-ink-muted)' }}>No events found</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '800px', margin: '0 auto' }}>
-              {filtered.map((event) => {
-                const d = new Date(event.date);
-                const colors = TYPE_COLORS[event.type] ?? TYPE_COLORS['special'];
-                return (
-                  <div key={event.id} className="card" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                    
-                    <div style={{
-                      flexShrink: 0, width: '4.5rem', padding: '0.75rem 0', textAlign: 'center',
-                      background: 'var(--color-brand-50)', borderRadius: '12px', border: '1px solid rgba(104,145,101,0.1)'
-                    }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-brand-600)', marginBottom: '0.25rem' }}>
-                        {d.toLocaleString('default', { month: 'short' })}
-                      </div>
-                      <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-brand-900)', lineHeight: 1 }}>
-                        {d.getDate()}
-                      </div>
-                    </div>
-
-                    <div style={{ flex: 1, minWidth: '200px' }}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                        <h3 className="heading-sm" style={{ margin: 0 }}>{event.title}</h3>
-                        <span style={{
-                          padding: '0.25rem 0.75rem', borderRadius: '100px', background: colors.bg, color: colors.text,
-                          fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '4rem 1.5rem' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '3rem',
+          alignItems: 'start'
+        }}>
+          {/* Left Column: List View */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <h2 className="heading-md" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <List size={24} className="text-brand-600" /> Upcoming Events
+            </h2>
+            {sortedEvents.length === 0 ? (
+              <div className="card" style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--color-ink-muted)' }}>
+                <CalendarIcon size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+                <p style={{ fontWeight: 600 }}>No upcoming events scheduled.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {sortedEvents.map(event => {
+                  const d = new Date(event.date);
+                  const colors = TYPE_COLORS[event.type] ?? TYPE_COLORS['special'];
+                  return (
+                    <div key={event.id} className="card" style={{ padding: '1.5rem' }}>
+                      <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start' }}>
+                        <div style={{ 
+                          width: '60px', 
+                          height: '60px', 
+                          background: 'var(--color-brand-50)', 
+                          borderRadius: '12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          border: '1px solid rgba(104,145,101,0.1)'
                         }}>
-                          {TYPE_LABELS[event.type] ?? event.type}
-                        </span>
-                      </div>
-                      
-                      <p className="body-text" style={{ marginBottom: '1rem' }}>{event.description}</p>
-                      
-                      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-ink-muted)' }}>
-                          <Clock size={14} /> {event.time}
-                        </span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-ink-muted)' }}>
-                          <MapPin size={14} /> {event.location}
-                        </span>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-brand-600)', textTransform: 'uppercase' }}>
+                            {d.toLocaleString('default', { month: 'short' })}
+                          </span>
+                          <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-brand-900)', lineHeight: 1 }}>
+                            {d.getDate()}
+                          </span>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.5rem' }}>
+                            <h3 style={{ fontWeight: 800, fontSize: '1.125rem', color: 'var(--color-ink)' }}>{event.title}</h3>
+                            <span style={{
+                              padding: '0.2rem 0.6rem', borderRadius: '100px', background: colors.bg, color: colors.text,
+                              fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em'
+                            }}>
+                              {TYPE_LABELS[event.type] ?? event.type}
+                            </span>
+                          </div>
+                          <p className="body-text" style={{ fontSize: '0.875rem', color: 'var(--color-ink-muted)', marginBottom: '1rem', lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {event.description}
+                          </p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', color: 'var(--color-ink-muted)', fontSize: '0.8125rem', fontWeight: 600 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                              <Clock size={14} className="text-brand-600" /> {event.time}{event.endTime ? ` - ${event.endTime}` : ''}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                              <MapPin size={14} className="text-brand-600" /> {event.location}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-          <div style={{ marginTop: '4rem', background: 'var(--color-surface-2)', border: '1px solid rgba(26,28,26,0.1)', borderRadius: '24px', padding: '3rem 2rem', textAlign: 'center', maxWidth: '800px', margin: '4rem auto 0' }}>
-            <h3 className="heading-sm" style={{ marginBottom: '0.75rem' }}>Every Sunday at 9:00 AM</h3>
-            <p className="body-text" style={{ marginBottom: '1.5rem' }}>Our door is always open. You're always welcome.</p>
-            <Link to="/new" className="btn-primary">
-              Plan My First Visit <ArrowRight size={18} />
-            </Link>
+          {/* Right Column: Calendar View */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+             <h2 className="heading-md" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <CalendarIcon size={24} className="text-brand-600" /> Monthly Schedule
+            </h2>
+            <div style={{ position: 'sticky', top: '2rem' }}>
+              <Calendar events={events} />
+              
+              <div style={{ marginTop: '2.5rem', background: 'var(--color-brand-950)', borderRadius: '24px', padding: '2.5rem 2rem', textAlign: 'center', color: 'white' }}>
+                <h3 className="heading-sm" style={{ color: 'white', marginBottom: '0.75rem' }}>Visit Us this Sunday</h3>
+                <p className="body-text" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9375rem', marginBottom: '1.5rem' }}>Our weekly gathering starts at 9:00 AM. We'd love to meet you!</p>
+                <Link to="/new" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                  Plan Your Visit <ArrowRight size={18} />
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
-      </section>
-    </>
+      </div>
+    </div>
   );
 }
