@@ -1,3 +1,4 @@
+import PageHeading from '../components/ui/PageHeading';
 import { useState } from 'react';
 import { Calendar as CalendarIcon, MapPin, Clock, ArrowRight, List } from 'lucide-react';
 import { useEvents } from '../hooks/useData';
@@ -20,37 +21,28 @@ const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export default function Events() {
   const { events } = useEvents();
-  const sortedEvents = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const [showPast, setShowPast] = useState(false);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const sortedEvents = events.filter(event => showPast || new Date(event.date + 'T00:00:00') >= today).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-surface-2)' }}>
       {/* Hero Section */}
-      <section className="hero-bg" style={{ padding: '6rem 0 5rem' }}>
-        <div className="page-container" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-          <span className="eyebrow anim-1" style={{ display: 'inline-block', marginBottom: '1.25rem', color: 'var(--color-brand-200)', borderBottom: '2px solid var(--color-accent-blue)', paddingBottom: '0.25rem' }}>
-            Stay Connected
-          </span>
-          <h1 className="heading-lg anim-2" style={{ color: 'var(--color-white)', marginBottom: '1.25rem' }}>
-            Events &amp; Gatherings
-          </h1>
-          <p className="body-large anim-3" style={{ color: 'rgba(255,255,255,0.7)', maxWidth: '600px', margin: '0 auto' }}>
-            From weekly Sunday mornings to community service and special celebrations — here's what's coming up.
-          </p>
-        </div>
-      </section>
+      <PageHeading label="LIFE TOGETHER" title="Gatherings & good company." description="Make time for fellowship. Explore our class calendar and find the next opportunity to gather." />
 
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '4rem 1.5rem' }}>
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))',
           gap: '3rem',
           alignItems: 'start'
         }}>
           {/* Left Column: List View */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             <h2 className="heading-md" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <List size={24} className="text-brand-600" /> Upcoming Events
+              <List size={24} className="text-brand-600" /> {showPast ? "All gatherings" : "Coming up"}
             </h2>
+            <label className="archive-toggle"><input type="checkbox" checked={showPast} onChange={e => setShowPast(e.target.checked)} /> Include past gatherings</label>
             {sortedEvents.length === 0 ? (
               <div className="card" style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--color-ink-muted)' }}>
                 <CalendarIcon size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
@@ -59,7 +51,7 @@ export default function Events() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 {sortedEvents.map(event => {
-                  const d = new Date(event.date);
+                  const d = new Date(event.date + 'T00:00:00');
                   const colors = TYPE_COLORS[event.type] ?? TYPE_COLORS['special'];
                   return (
                     <div key={event.id} className="card" style={{ padding: '1.5rem' }}>

@@ -1,5 +1,5 @@
 export function formatDate(dateString: string): string {
-  const date = new Date(dateString);
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(dateString) ? dateString + 'T00:00:00' : dateString);
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -9,7 +9,7 @@ export function formatDate(dateString: string): string {
 }
 
 export function formatShortDate(dateString: string): string {
-  const date = new Date(dateString);
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(dateString) ? dateString + 'T00:00:00' : dateString);
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',

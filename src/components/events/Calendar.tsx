@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Send, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import type { Event } from '../../types';
 
 interface CalendarProps {
@@ -11,14 +11,7 @@ interface CalendarProps {
   onInviteEvent?: (event: Event) => void;
 }
 
-export default function Calendar({ 
-  events, 
-  isAdmin = false, 
-  onDateClick, 
-  onEditEvent, 
-  onDeleteEvent, 
-  onInviteEvent 
-}: CalendarProps) {
+export default function Calendar({ events }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -54,7 +47,7 @@ export default function Calendar({
 
   const getEventsForDate = (d: number, mOffset: number) => {
     const targetDate = new Date(year, month + mOffset, d);
-    const dateStr = targetDate.toISOString().split('T')[0];
+    const dateStr = [targetDate.getFullYear(), String(targetDate.getMonth() + 1).padStart(2, '0'), String(targetDate.getDate()).padStart(2, '0')].join('-');
     return events.filter(e => e.date === dateStr);
   };
 
@@ -92,23 +85,22 @@ export default function Calendar({
           border: '1px solid var(--color-border)', 
           borderRadius: '12px', 
           overflow: 'hidden',
-          minWidth: '600px' // Ensure days don't get too squeezed
+          minWidth: '0' // Ensure days don't get too squeezed
         }}>
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} style={{ padding: '0.75rem', textAlign: 'center', background: 'var(--color-surface-2)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-ink-muted)', letterSpacing: '0.05em' }}>
+          <div key={d} style={{ padding: '0.5rem 0', textAlign: 'center', background: 'var(--color-surface-2)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-ink-muted)', letterSpacing: '0.05em' }}>
             {d}
           </div>
         ))}
         {days.map((d, i) => {
           const dayEvents = getEventsForDate(d.day, d.monthOffset);
           const isToday = d.currentMonth && d.day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
-          const targetDate = new Date(year, month + d.monthOffset, d.day).toISOString().split('T')[0];
 
           return (
             <div 
               key={i} 
               style={{ 
-                minHeight: '120px', 
+                minHeight: '80px', 
                 background: d.currentMonth ? 'var(--color-white)' : 'var(--color-surface)',
                 padding: '0.5rem',
                 position: 'relative'

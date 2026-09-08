@@ -1,3 +1,4 @@
+import PageHeading from '../components/ui/PageHeading';
 import { useState } from 'react';
 import { BookOpen, Search, Calendar, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { useResources } from '../hooks/useData';
@@ -16,19 +17,7 @@ export default function Resources() {
 
   return (
     <>
-      <section className="hero-bg" style={{ padding: '6rem 0 5rem' }}>
-        <div className="page-container" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-          <span className="eyebrow anim-1" style={{ display: 'inline-block', marginBottom: '1.25rem', color: 'var(--color-brand-200)', borderBottom: '2px solid var(--color-accent-blue)', paddingBottom: '0.25rem' }}>
-            Study &amp; Grow
-          </span>
-          <h1 className="heading-lg anim-2" style={{ color: 'var(--color-white)', marginBottom: '1.25rem' }}>
-            Sermons &amp; Resources
-          </h1>
-          <p className="body-large anim-3" style={{ color: 'rgba(255,255,255,0.7)', maxWidth: '600px', margin: '0 auto' }}>
-            Miss a Sunday or want to revisit a message? Browse our archive of sermons and study materials.
-          </p>
-        </div>
-      </section>
+      <PageHeading label="OPEN THE WORD" title="A little more to reflect on." description="Revisit a message, find a passage, and keep the conversation going throughout your week." />
 
       <section className="section bg-surface">
         <div className="page-container" style={{ maxWidth: '800px' }}>
@@ -36,7 +25,8 @@ export default function Resources() {
             <Search size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-ink-faint)', pointerEvents: 'none' }} />
             <input
               className="input"
-              type="text"
+              type="search"
+              aria-label="Search study notes"
               placeholder="Search sermons, topics, scripture…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -62,6 +52,10 @@ export default function Resources() {
                     key={sermon.id}
                     className="card"
                     style={{ padding: '1.75rem', cursor: 'pointer', borderColor: isOpen ? 'var(--color-brand-500)' : 'var(--color-border)', boxShadow: isOpen ? 'var(--shadow-md)' : 'var(--shadow-xs)' }}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isOpen}
+                    onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpanded(isOpen ? null : sermon.id); } }}
                     onClick={() => setExpanded(isOpen ? null : sermon.id)}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>

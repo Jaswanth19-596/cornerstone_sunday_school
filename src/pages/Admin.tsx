@@ -24,7 +24,7 @@ const to24h = (time12h: string) => {
   if (!time12h) return '';
   const match = time12h.match(/(\d+):(\d+)\s*(AM|PM)/i);
   if (!match) return time12h;
-  let [_, h, m, p] = match;
+  const [, h, m, p] = match;
   let hours = parseInt(h);
   if (p.toUpperCase() === 'PM' && hours < 12) hours += 12;
   if (p.toUpperCase() === 'AM' && hours === 12) hours = 0;
@@ -126,7 +126,7 @@ function InviteModal({ event, onInvite, onClose }: { event: Event; onInvite: (em
   const handleGenerate = () => {
     if (selected.size === 0) return alert('Select at least one email.');
     
-    let startDate = new Date(event.date);
+    const startDate = new Date(event.date);
     if (event.time) {
       const match = event.time.match(/(\d+)(?::(\d+))?\s*(AM|PM)/i);
       if (match) {
