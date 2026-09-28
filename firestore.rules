@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Replace this value with the email address of the Firebase admin account before deploying.
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && request.auth.token.email == 'cornerstone@gmail.com'; }
+    function text(value, min, max) { return value is string && value.size() >= min && value.size() <= max; }
+    function email(value) { return text(value, 3, 254) && value.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$'); }
+    function validDate(value) { return value is string && value.matches('^\\d{4}-\\d{2}-\\d{2}$'); }
+    function hasOnly(fields) { return request.resource.data.keys().hasOnly(fields); }
+
+    function validEvent() {
+      return hasOnly(['title', 'date', 'time', 'endTime', 'location', 'description', 'type']) &&
+        request.resource.data.keys().hasAll(['title', 'date', 'time', 'location', 'description', 'type']) &&
+        text(request.resource.data.title, 1, 160) && validDate(request.resource.data.date) &&
+        text(request.resource.data.time, 0, 30) && (!('endTime' in request.resource.data) || text(request.resource.data.endTime, 0, 30)) &&
+        text(request.resource.data.location, 0, 160) && text(request.resource.data.description, 0, 2000) &&
+        request.resource.data.type in ['sunday-gathering', 'social', 'service', 'special'];
+    }
+
+    function validResource() {
+      return hasOnly(['title', 'speaker', 'date', 'scripture', 'scriptureText', 'description', 'audioUrl', 'videoUrl', 'handoutUrl', 'series']) &&
+        request.resource.data.keys().hasAll(['title', 'speaker', 'date', 'scripture', 'description']) &&
+        text(request.resource.data.title, 1, 160) && text(request.resource.data.speaker, 1, 160) && validDate(request.resource.data.date) &&
+        text(request.resource.data.scripture, 1, 160) && text(request.resource.data.description, 0, 3000) &&
+        (!('scriptureText' in request.resource.data) || text(request.resource.data.scriptureText, 0, 5000)) &&
+        (!('series' in request.resource.data) || text(request.resource.data.series, 0, 160)) &&
+        (!('audioUrl' in request.resource.data) || text(request.resource.data.audioUrl, 0, 2000)) &&
+        (!('videoUrl' in request.resource.data) || text(request.resource.data.videoUrl, 0, 2000)) &&
+        (!('handoutUrl' in request.resource.data) || text(request.resource.data.handoutUrl, 0, 2000));
+    }
+
+    function validContact() {
+      return hasOnly(['email']) && request.resource.data.keys().hasAll(['email']) && email(request.resource.data.email);
+    }
+
+    function validSignupId(itemId) {
+      return (request.resource.data.kind == 'standard' && itemId in ['coffee', 'juice', 'bagels', 'fruit', 'pastries', 'supplies', 'setup', 'welcome', 'cleanup']) ||
+        (request.resource.data.kind == 'custom' && itemId.matches('^[a-f0-9-]{36}$'));
+    }
+    function validSignup(itemId) {
+      return hasOnly(['kind', 'name', 'title', 'detail', 'ownerUid']) &&
+        request.resource.data.keys().hasAll(['kind', 'name', 'title', 'detail', 'ownerUid']) &&
+        request.resource.data.kind in ['standard', 'custom'] && text(request.resource.data.name, 1, 80) &&
+        text(request.resource.data.title, 1, 100) && text(request.resource.data.detail, 0, 200) &&
+        request.resource.data.ownerUid == request.auth.uid && validSignupId(itemId);
+    }
+
+    match /events/{eventId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() && validEvent();
+      allow delete: if isAdmin();
+    }
+    match /resources/{resourceId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() && validResource();
+      allow delete: if isAdmin();
+    }
+    match /contacts/{contactId} {
+      allow read, create, update, delete: if isAdmin() && (request.method == 'delete' || validContact());
+    }
+    match /eventParticipants/{eventId}/items/{participantId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && hasOnly(['email', 'invitedAt']) &&
+        request.resource.data.keys().hasAll(['email', 'invitedAt']) && text(request.resource.data.email, 3, 254) &&
+        text(request.resource.data.invitedAt, 1, 40);
+      allow delete: if isAdmin();
+    }
+    match /weeklySignups/{week}/items/{itemId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && validDate(week) && validSignup(itemId);
+      allow update: if isSignedIn() && resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.ownerUid == resource.data.ownerUid && validSignup(itemId);
+      allow delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+  }
+}

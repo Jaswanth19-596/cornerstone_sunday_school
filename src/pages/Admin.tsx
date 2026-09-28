@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
+import SignupSummary from '../components/SignupSummary';
 import { Link } from 'react-router-dom';
 import {
   Lock, Plus, Pencil, Trash2,
   X, LogOut, ArrowLeft, Save, RotateCcw, Mail, Send, Calendar as CalendarIcon, List,
   Users
 } from 'lucide-react';
-import { useEvents, useResources, useEmails } from '../hooks/useData';
+import { useEvents, useResources, useEmails, useEventParticipants } from '../hooks/useData';
 import Calendar from '../components/events/Calendar';
 import type { Event, Sermon, Participant } from '../types';
+import { auth, firebaseEnabled } from '../lib/firebase';
 
-const ADMIN_PASSWORD = 'grace2024';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -112,7 +114,7 @@ function ResourceForm({ initial, onSave, onCancel }: { initial: Omit<Sermon, 'id
   );
 }
 
-function InviteModal({ event, onInvite, onClose }: { event: Event; onInvite: (emails: string[]) => void; onClose: () => void }) {
+function InviteModal({ event, onInvite, onClose }: { event: Event; onInvite: (emails: string[]) => Promise<void>; onClose: () => void }) {
   const { emails } = useEmails();
   const [selected, setSelected] = useState<Set<string>>(new Set(emails.map(e => e.email)));
   
@@ -123,7 +125,7 @@ function InviteModal({ event, onInvite, onClose }: { event: Event; onInvite: (em
     setSelected(next);
   };
   
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (selected.size === 0) return alert('Select at least one email.');
     
     const startDate = new Date(event.date);
@@ -151,7 +153,7 @@ function InviteModal({ event, onInvite, onClose }: { event: Event; onInvite: (em
     });
 
     window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
-    onInvite(Array.from(selected));
+    await onInvite(Array.from(selected));
     onClose();
   };
 
@@ -192,8 +194,7 @@ function InviteModal({ event, onInvite, onClose }: { event: Event; onInvite: (em
   );
 }
 
-function ParticipantsModal({ event, onClose }: { event: Event; onClose: () => void }) {
-  const participants = event.participants || [];
+function ParticipantsModal({ event, participants, onClose }: { event: Event; participants: Participant[]; onClose: () => void }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
@@ -228,13 +229,34 @@ export default function Admin() {
   const [authed, setAuthed]   = useState(false);
   const [pw, setPw]           = useState('');
   const [pwError, setPwError] = useState(false);
-  const [tab, setTab]         = useState<'events' | 'resources' | 'emails'>('events');
+  const [loginError, setLoginError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
+  const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
+  useEffect(() => {
+    if (!auth || !adminEmail) return;
+    return onAuthStateChanged(auth, user => setAuthed(user?.email?.toLowerCase() === adminEmail));
+  }, [adminEmail]);
+  async function login() {
+    if (loggingIn) return;
+    setLoggingIn(true); setLoginError(''); setPwError(false);
+    try {
+      if (!firebaseEnabled || !auth) throw new Error('Connect Firebase before signing in.');
+      if (!adminEmail) throw new Error('Set VITE_ADMIN_EMAIL before signing in.');
+      const result = await signInWithEmailAndPassword(auth, adminEmail, pw);
+      if (result.user.email?.toLowerCase() !== adminEmail) throw new Error('This account is not allowed to use the admin area.');
+      setPw('');
+    } catch (error) { setLoginError(error instanceof Error ? error.message : 'Could not connect. Please try again.'); }
+    finally { setLoggingIn(false); }
+  }
+  const [tab, setTab]         = useState<'events' | 'resources' | 'emails' | 'signups'>('events');
 
   const { events, addEvent, updateEvent, deleteEvent, resetEvents } = useEvents();
   const [editingEventId, setEditingEventId]   = useState<string | null>(null);
   const [addingEvent, setAddingEvent]         = useState(false);
   const [invitingEvent, setInvitingEvent]     = useState<Event | null>(null);
   const [managingEvent, setManagingEvent]     = useState<Event | null>(null);
+  const activeEventId = invitingEvent?.id || managingEvent?.id || null;
+  const { participants, addParticipants } = useEventParticipants(activeEventId);
 
   const { resources, addResource, updateResource, deleteResource, resetResources } = useResources();
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
@@ -253,21 +275,22 @@ export default function Admin() {
           </div>
           <div className="card-dark" style={{ padding: '2.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
             <div style={{ marginBottom: '1.5rem' }}>
-              <label className="label" style={{ color: 'rgba(255,255,255,0.7)' }}>Password</label>
+              <label className="label" style={{ color: 'rgba(255,255,255,0.7)' }}>Admin password</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)' }} />
                 <input
-                  type="password" className="input" placeholder="Enter password" value={pw}
+                  type="password" className="input" placeholder="Enter your Firebase password" value={pw}
                   onChange={(e) => { setPw(e.target.value); setPwError(false); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { if (pw === ADMIN_PASSWORD) setAuthed(true); else setPwError(true); } }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void login(); }}
                   style={{ paddingLeft: '2.75rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }}
                   autoFocus
                 />
               </div>
               {pwError && <p style={{ fontSize: '0.875rem', color: '#EF4444', marginTop: '0.5rem', fontWeight: 600 }}>Incorrect password.</p>}
             </div>
-            <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { if (pw === ADMIN_PASSWORD) setAuthed(true); else setPwError(true); }}>
-              Sign In
+            {loginError && <p role="alert" style={{ color: '#fca5a5' }}>{loginError}</p>}
+            <button disabled={loggingIn} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { void login(); }}>
+              {loggingIn ? 'Signing in…' : 'Sign In'}
             </button>
             <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
               <Link to="/" style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>← Back to site</Link>
@@ -288,25 +311,26 @@ export default function Admin() {
           <div style={{ color: 'white', fontWeight: 700 }}>Admin Panel</div>
           <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
             <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}><ArrowLeft size={16} /> View Site</Link>
-            <button onClick={() => setAuthed(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.375rem 0.75rem', color: 'white', cursor: 'pointer' }}><LogOut size={14} /> Sign Out</button>
+            <button onClick={async () => { if (auth) await firebaseSignOut(auth); setAuthed(false); }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.375rem 0.75rem', color: 'white', cursor: 'pointer' }}><LogOut size={14} /> Sign Out</button>
           </div>
         </div>
       </div>
 
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '3rem 1.5rem' }}>
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-          {(['events', 'resources', 'emails'] as const).map((t) => (
+          {(['events', 'resources', 'emails', 'signups'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '0.75rem 1.5rem', borderRadius: '100px', fontSize: '0.9375rem', fontWeight: 700,
               border: tab === t ? '2px solid var(--color-brand-600)' : '2px solid var(--color-border)',
               background: tab === t ? 'var(--color-brand-600)' : 'white',
               color: tab === t ? 'white' : 'var(--color-ink-muted)', cursor: 'pointer', transition: 'all 0.2s'
             }}>
-              {t === 'events' ? 'Events' : t === 'resources' ? 'Resources' : 'Emails'}
+              {t === 'events' ? 'Events' : t === 'resources' ? 'Resources' : t === 'signups' ? 'Sign-ups' : 'Emails'}
             </button>
           ))}
         </div>
 
+        {tab === 'signups' && <SignupSummary />}
         {tab === 'events' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -350,7 +374,7 @@ export default function Admin() {
                               <div className="caption" style={{ marginTop: '0.25rem', fontWeight: 600 }}>{event.date} · {event.time}{event.endTime ? ` - ${event.endTime}` : ''}</div>
                             </div>
                             <button onClick={() => setManagingEvent(event)} className="btn-ghost" style={{ padding: '0.4rem 0.8rem', border: '1px solid var(--color-border)', borderRadius: '100px', fontSize: '0.75rem' }}>
-                              <Users size={14} /> {event.participants?.length || 0}
+                              <Users size={14} /> Guests
                             </button>
                           </div>
                           
@@ -380,23 +404,15 @@ export default function Admin() {
             {invitingEvent && (
               <InviteModal 
                 event={invitingEvent} 
-                onInvite={(selectedEmails) => {
-                  const existing = invitingEvent.participants || [];
-                  const nextParticipants: Participant[] = [...existing];
-                  selectedEmails.forEach(email => {
-                    if (!existing.some(p => p.email === email)) {
-                      nextParticipants.push({ email, invitedAt: new Date().toISOString() });
-                    }
-                  });
-                  updateEvent(invitingEvent.id, { participants: nextParticipants });
-                }}
+                onInvite={addParticipants}
                 onClose={() => setInvitingEvent(null)} 
               />
             )}
 
             {managingEvent && (
               <ParticipantsModal 
-                event={managingEvent} 
+                event={managingEvent}
+                participants={participants}
                 onClose={() => setManagingEvent(null)} 
               />
             )}

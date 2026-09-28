@@ -1,6 +1,46 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Libre+Caslon+Display&display=swap');
 @import "tailwindcss";
 
+.signup-form input + label { margin-top: 1rem; }
+.signup-fieldset { border: 0; min-width: 0; }
+.signup-fieldset:disabled { opacity: .65; }
+.signup-summary-table { overflow-x: auto; margin-top: 1rem; }
+.signup-summary-table table { width: 100%; border-collapse: collapse; text-align: left; }
+.signup-summary-table th, .signup-summary-table td { padding: .85rem; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
+.signup-summary-table thead { background: var(--color-surface-2); }
+
+.signup-page { padding-top: 2rem; padding-bottom: 5rem; max-width: 1000px; }
+.signup-preview { padding: 1rem 1.25rem; border: 1px solid #cdbd99; background: #f4eddd; color: #665331; font-size: .9rem; margin-bottom: 2rem; }
+.signup-date, .signup-row-main { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
+.signup-date h2 { font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 400; }
+.signup-date p, .signup-group-heading p, .signup-row p { color: var(--color-ink-soft); }
+.signup-count { background: var(--color-surface-2); color: var(--color-brand-700); padding: .6rem 1rem; font-size: .9rem; flex-shrink: 0; }
+.signup-feedback { min-height: 3.5rem; padding-top: 1rem; color: var(--color-brand-700); }
+.signup-error { color: #9d3025; padding-bottom: 1rem; }
+.signup-group { margin: 1rem 0 3rem; }
+.signup-group-heading { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1.25rem; }
+.signup-group-heading svg { margin-top: .4rem; color: var(--color-brand-600); flex-shrink: 0; }
+.signup-group-heading h2 { font-family: var(--font-display); font-size: 2rem; font-weight: 400; line-height: 1.2; }
+.signup-group-heading p { font-size: .95rem; margin-top: .5rem; }
+.signup-row { border-top: 1px solid var(--color-border); padding: 1.4rem 0; }
+.signup-row:last-child { border-bottom: 1px solid var(--color-border); }
+.signup-row h3 { font-size: 1.1rem; font-weight: 600; }
+.signup-row p { font-size: .95rem; }
+.signup-person { display: flex; gap: .4rem; align-items: center; margin-top: .4rem; overflow-wrap: anywhere; }
+.signup-row .signup-person { color: var(--color-brand-700); }
+.signup-primary, .signup-secondary { font: inherit; font-size: .95rem; padding: .65rem 1.1rem; min-height: 46px; cursor: pointer; border: 1px solid var(--color-brand-600); border-radius: 3px; flex-shrink: 0; }
+.signup-primary { background: var(--color-brand-600); color: white; }
+.signup-primary:hover { background: var(--color-brand-800); }
+.signup-secondary { background: transparent; color: var(--color-brand-700); }
+.signup-secondary:hover { background: var(--color-surface-2); }
+.signup-form { background: var(--color-surface-2); padding: 1.25rem; margin-top: 1rem; }
+.signup-form label { display: block; font-weight: 600; margin-bottom: .4rem; }
+.signup-form input { width: 100%; max-width: 420px; display: block; padding: .7rem .9rem; font: inherit; border: 1px solid #92978a; border-radius: 3px; background: white; }
+.signup-actions { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: 1rem; align-items: center; }
+.signup-text-button { font: inherit; font-size: .9rem; text-decoration: underline; text-underline-offset: 3px; border: 0; background: transparent; color: var(--color-ink-soft); cursor: pointer; padding: .65rem; min-height: 44px; }
+.signup-note { color: var(--color-ink-soft); font-size: .95rem; max-width: 570px; }
+@media (max-width: 600px) { .signup-date { align-items: flex-start; flex-direction: column; gap: 1rem; } .signup-row-main { gap: .75rem; } .signup-primary, .signup-secondary { padding: .6rem .8rem; } .signup-row-main > div { min-width: 0; } }
+
 @theme {
   /* ── PALETTE: Based on the Cornerstone Image ── */
   /* Brand (Olive Green from carpet) */

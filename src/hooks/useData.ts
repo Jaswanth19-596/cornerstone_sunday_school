@@ -1,131 +1,105 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { auth, db, firebaseEnabled } from '../lib/firebase';
 import { events as defaultEvents, pastSermons as defaultResources } from '../data/mockData';
-import type { Event, Sermon } from '../types';
+import type { Event, Participant, Sermon } from '../types';
 
-const EVENTS_KEY = 'ss_events';
-const RESOURCES_KEY = 'ss_resources';
-const EMAILS_KEY = 'ss_emails';
+export interface EmailMember { id: string; email: string; }
 
-export interface EmailMember {
-  id: string;
-  email: string;
-}
-
-function loadFromStorage<T>(key: string, fallback: T[]): T[] {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T[];
-  } catch {
-    return fallback;
-  }
-}
-
-function saveToStorage<T>(key: string, data: T[]) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
-// ─── Events ───────────────────────────────────────────────
-export function useEvents() {
-  const [events, setEvents] = useState<Event[]>(() =>
-    loadFromStorage<Event>(EVENTS_KEY, defaultEvents)
-  );
-
-  const save = useCallback((updated: Event[]) => {
-    setEvents(updated);
-    saveToStorage(EVENTS_KEY, updated);
-  }, []);
-
-  const addEvent = useCallback(
-    (event: Omit<Event, 'id'>) => {
-      const newEvent: Event = { ...event, id: Date.now().toString() };
-      save([...events, newEvent]);
-    },
-    [events, save]
-  );
-
-  const updateEvent = useCallback(
-    (id: string, updates: Partial<Event>) => {
-      save(events.map((e) => (e.id === id ? { ...e, ...updates } : e)));
-    },
-    [events, save]
-  );
-
-  const deleteEvent = useCallback(
-    (id: string) => {
-      save(events.filter((e) => e.id !== id));
-    },
-    [events, save]
-  );
-
-  const resetEvents = useCallback(() => {
-    localStorage.removeItem(EVENTS_KEY);
-    setEvents(defaultEvents);
-  }, []);
-
-  return { events, addEvent, updateEvent, deleteEvent, resetEvents };
-}
-
-// ─── Resources (Sermons) ──────────────────────────────────
-export function useResources() {
-  const [resources, setResources] = useState<Sermon[]>(() =>
-    loadFromStorage<Sermon>(RESOURCES_KEY, defaultResources)
-  );
-
-  const save = useCallback((updated: Sermon[]) => {
-    setResources(updated);
-    saveToStorage(RESOURCES_KEY, updated);
-  }, []);
-
-  const addResource = useCallback(
-    (resource: Omit<Sermon, 'id'>) => {
-      const newResource: Sermon = { ...resource, id: Date.now().toString() };
-      save([...resources, newResource]);
-    },
-    [resources, save]
-  );
-
-  const updateResource = useCallback(
-    (id: string, updates: Partial<Sermon>) => {
-      save(resources.map((r) => (r.id === id ? { ...r, ...updates } : r)));
-    },
-    [resources, save]
-  );
-
-  const deleteResource = useCallback(
-    (id: string) => {
-      save(resources.filter((r) => r.id !== id));
-    },
-    [resources, save]
-  );
-
-  const resetResources = useCallback(() => {
-    localStorage.removeItem(RESOURCES_KEY);
-    setResources(defaultResources);
-  }, []);
-
-  return { resources, addResource, updateResource, deleteResource, resetResources };
-}
-
-// ─── Emails ───────────────────────────────────────────────
-export function useEmails() {
-  const [emails, setEmails] = useState<EmailMember[]>(() => {
-    const saved = localStorage.getItem(EMAILS_KEY);
-    return saved ? JSON.parse(saved) : [];
-  });
+function useSharedCollection<T extends { id: string }>(name: string, fallback: T[]) {
+  const [items, setItems] = useState<T[]>(fallback);
+  const [ready, setReady] = useState(!firebaseEnabled);
+  const [identity, setIdentity] = useState('');
 
   useEffect(() => {
-    localStorage.setItem(EMAILS_KEY, JSON.stringify(emails));
-  }, [emails]);
+    const currentAuth = auth;
+    if (!firebaseEnabled || !currentAuth) return;
+    return onAuthStateChanged(currentAuth, user => {
+      if (user) setIdentity(user.uid);
+      else void signInAnonymously(currentAuth).catch(() => setReady(true));
+    });
+  }, []);
 
-  const addEmail = (emailStr: string) => {
-    const newEmail: EmailMember = { id: Date.now().toString(), email: emailStr };
-    setEmails((prev) => [...prev, newEmail]);
-  };
+  useEffect(() => {
+    if (!firebaseEnabled || !db || !identity) return;
+    return onSnapshot(collection(db, name), snapshot => {
+      setItems(snapshot.docs.map(item => ({ id: item.id, ...item.data() }) as T));
+      setReady(true);
+    }, () => setReady(true));
+  }, [identity, name]);
 
-  const deleteEmail = (id: string) => {
-    setEmails((prev) => prev.filter((e) => e.id !== id));
-  };
+  const add = useCallback(async (item: Omit<T, 'id'>) => {
+    if (!firebaseEnabled || !db) throw new Error('Connect Firebase before editing shared content.');
+    await addDoc(collection(db, name), item);
+  }, [name]);
 
-  return { emails, addEmail, deleteEmail };
+  const update = useCallback(async (id: string, updates: Partial<T>) => {
+    const database = db;
+    if (!firebaseEnabled || !database) throw new Error('Connect Firebase before editing shared content.');
+    const { id: ignored, ...data } = updates;
+    void ignored;
+    await setDoc(doc(database, name, id), data, { merge: true });
+  }, [name]);
+
+  const remove = useCallback(async (id: string) => {
+    const database = db;
+    if (!firebaseEnabled || !database) throw new Error('Connect Firebase before editing shared content.');
+    await deleteDoc(doc(database, name, id));
+  }, [name]);
+
+  const restoreDefaults = useCallback(async () => {
+    const database = db;
+    if (!firebaseEnabled || !database) throw new Error('Connect Firebase before restoring starter content.');
+    await Promise.all(fallback.map(({ id, ...item }) => setDoc(doc(database, name, id), item)));
+  }, [fallback, name]);
+
+  return { items, add, update, remove, restoreDefaults, ready };
+}
+
+export function useEvents() {
+  const shared = useSharedCollection<Event>('events', defaultEvents);
+  return { events: shared.items, addEvent: shared.add, updateEvent: shared.update, deleteEvent: shared.remove, resetEvents: shared.restoreDefaults, ready: shared.ready };
+}
+
+export function useResources() {
+  const shared = useSharedCollection<Sermon>('resources', defaultResources);
+  return { resources: shared.items, addResource: shared.add, updateResource: shared.update, deleteResource: shared.remove, resetResources: shared.restoreDefaults, ready: shared.ready };
+}
+
+export function useEmails() {
+  const shared = useSharedCollection<EmailMember>('contacts', []);
+  return { emails: shared.items, addEmail: async (email: string) => shared.add({ email: email.trim().toLowerCase() }), deleteEmail: shared.remove, ready: shared.ready };
+}
+
+export function useEventParticipants(eventId: string | null) {
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [identity, setIdentity] = useState('');
+
+  useEffect(() => {
+    const currentAuth = auth;
+    if (!firebaseEnabled || !currentAuth) return;
+    return onAuthStateChanged(currentAuth, user => {
+      if (user) setIdentity(user.uid);
+      else void signInAnonymously(currentAuth).catch(() => undefined);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!firebaseEnabled || !db || !identity || !eventId) return;
+    return onSnapshot(collection(db, 'eventParticipants', eventId, 'items'), snapshot => {
+      setParticipants(snapshot.docs.map(item => item.data() as Participant));
+    }, () => setParticipants([]));
+  }, [eventId, identity]);
+
+  const addParticipants = useCallback(async (emails: string[]) => {
+    const database = db;
+    if (!database || !eventId) throw new Error('Choose an event first.');
+    const existing = new Set(participants.map(participant => participant.email));
+    await Promise.all(emails.filter(email => !existing.has(email)).map(email =>
+      addDoc(collection(database, 'eventParticipants', eventId, 'items'), { email, invitedAt: new Date().toISOString() })
+    ));
+  }, [eventId, participants]);
+
+  return { participants, addParticipants };
 }

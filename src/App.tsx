@@ -5,6 +5,7 @@ import Events from './pages/Events';
 import Resources from './pages/Resources';
 import Newcomer from './pages/Newcomer';
 import Admin from './pages/Admin';
+import Signups from './pages/Signups';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route index element={<Home />} />
           <Route path="events" element={<Events />} />
           <Route path="resources" element={<Resources />} />
+          <Route path="signups" element={<Signups />} />
           <Route path="new" element={<Newcomer />} />
         </Route>
         {/* Admin outside MainLayout for full-page experience */}
