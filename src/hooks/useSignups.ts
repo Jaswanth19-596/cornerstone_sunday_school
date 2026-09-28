@@ -3,6 +3,7 @@ import { onAuthStateChanged, signInAnonymously, type User } from 'firebase/auth'
 import { collection, doc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { auth, db, firebaseEnabled } from '../lib/firebase';
 import { sendSignupNotification } from '../lib/notifications';
+import { changedSignupIds, type StoredItem } from '../lib/signupChanges';
 
 export const needs = [
   ['coffee', 'Breakfast', 'Coffee', '2 pots'], ['juice', 'Breakfast', 'Orange juice', '1 gallon'],
@@ -14,7 +15,6 @@ export const needs = [
 
 export interface CustomItem { id: string; name: string; title: string; detail: string }
 export interface SignupData { commitments: Record<string, string>; custom: CustomItem[] }
-interface StoredItem { name: string; title: string; detail: string; kind: 'standard' | 'custom'; ownerUid: string }
 interface ViewData extends SignupData { owned: string[]; items: Record<string, StoredItem> }
 
 const empty = (): ViewData => ({ commitments: {}, custom: [], owned: [], items: {} });
@@ -95,9 +95,8 @@ export function useSignups(week: string) {
 
       const changes: string[] = [];
       const batch = writeBatch(db);
-      for (const id of new Set([...Object.keys(data.items), ...Object.keys(desired)])) {
+      for (const id of changedSignupIds(data.items, desired)) {
         const before = data.items[id], after = desired[id];
-        if (JSON.stringify(before) === JSON.stringify(after)) continue;
         const reference = doc(db, 'weeklySignups', week, 'items', id);
         if (!after) { batch.delete(reference); changes.push(`${before.name} canceled ${before.title}.`); }
         else { batch.set(reference, after); changes.push(`${after.name} ${before ? 'updated' : 'signed up for'} ${after.title}${after.detail ? ` (${after.detail})` : ''}.`); }
