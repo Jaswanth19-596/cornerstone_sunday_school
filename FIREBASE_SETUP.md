@@ -67,6 +67,18 @@ Add the first sign-up as a test and confirm that the EmailJS notification arrive
 
 ## 5. Publish the static website
 
+### Netlify
+
+The local `.env` file is ignored by Git, so Netlify does not receive it when building from GitHub. In the Netlify project's environment variables, add the `VITE_FIREBASE_*` values and `VITE_ADMIN_EMAIL` from your local `.env`. Make them available to production builds. Add the `VITE_EMAILJS_*` values if email notifications are configured.
+
+Trigger a new production deploy after saving the variables: Vite embeds these values at build time, so changing settings alone does not update the published site. Keep `.env.example` empty and do not commit `.env`.
+
+The repository's `netlify.toml` configures the build, the `dist` publish directory, and the fallback needed to open routes such as `/signups` directly.
+
+It also sets `SECRETS_SCAN_OMIT_KEYS` for the six public Firebase web-app configuration variables. These identifiers are intentionally embedded in the browser bundle; access to data is controlled by Firebase Authentication and Firestore rules. Secret scanning remains enabled for other values and for the build output. Do not exclude the entire `dist` directory or add private server credentials to this list. Netlify documents scanning exceptions as environment variables, rather than a `[secrets_scanning]` TOML section.
+
+### Firebase Hosting
+
 Build and deploy it from this folder:
 
 ```bash
