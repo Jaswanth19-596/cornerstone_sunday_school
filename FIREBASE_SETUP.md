@@ -75,7 +75,7 @@ Trigger a new production deploy after saving the variables: Vite embeds these va
 
 The repository's `netlify.toml` configures the build, the `dist` publish directory, and the fallback needed to open routes such as `/signups` directly.
 
-It also sets `SECRETS_SCAN_OMIT_KEYS` for the six public Firebase web-app configuration variables. These identifiers are intentionally embedded in the browser bundle; access to data is controlled by Firebase Authentication and Firestore rules. Secret scanning remains enabled for other values and for the build output. Do not exclude the entire `dist` directory or add private server credentials to this list. Netlify documents scanning exceptions as environment variables, rather than a `[secrets_scanning]` TOML section.
+It also sets `SECRETS_SCAN_OMIT_KEYS` for the six public Firebase web-app configuration variables and `VITE_ADMIN_EMAIL`. The admin email is a public login identifier in the current password-only login form, not a password or authorization credential. These identifiers are intentionally embedded in the browser bundle; access to data is controlled by Firebase Authentication and Firestore rules. Secret scanning remains enabled for other values and for the build output. Do not exclude the entire `dist` directory or add private server credentials to this list. Netlify documents scanning exceptions as environment variables, rather than a `[secrets_scanning]` TOML section.
 
 ### Firebase Hosting
 
